@@ -16,6 +16,18 @@ test('core workspace automated WCAG checks and keyboard skip link', async ({ pag
   await expect(page.locator('#main-content')).toBeFocused();
   expect(page.url()).toContain('#/lab');
 });
+test('dark theme workspace and story page pass automated WCAG checks', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('./#/lab');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: '2D contours' }).click();
+  const lab = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(lab.violations).toEqual([]);
+  await page.getByRole('link', { name: 'The story', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Lost in the fog' })).toBeVisible();
+  const story = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(story.violations).toEqual([]);
+});
 test('3D picking, PNG export, and view switching have no page errors', async ({ page, browserName }) => {
   test.skip(
     browserName === 'firefox',

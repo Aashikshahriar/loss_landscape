@@ -20,6 +20,8 @@ export interface Objective2D {
   gradient(theta: Float64Array): Float64Array;
   hessian(theta: Float64Array): number[][];
   formula: string;
+  /** LaTeX source for the formula, rendered with KaTeX. */
+  tex: string;
   description: string;
   caveat: string;
   rate: number;

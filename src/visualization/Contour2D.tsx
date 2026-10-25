@@ -1,5 +1,5 @@
 import { contours } from 'd3-contour';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { algorithms } from '../math/engine';
 import type { Objective2D, Run, Vec } from '../types';
 import { inDomain, sampleSurface, terrainColor } from './sampling';
@@ -28,7 +28,20 @@ export default function Contour2D({
   const data = useMemo(() => sampleSurface(o, 80), [o]);
   const [zoom, setZoom] = useState(1),
     [pan, setPan] = useState<Vec>([0, 0]);
-  const drag = useRef<Vec | null>(null);
+  const drag = useRef<Vec | null>(null),
+    svgRef = useRef<SVGSVGElement>(null),
+    [probe, setProbe] = useState<Vec | null>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    // Registered natively so the page does not scroll while zooming the map.
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoom((z) => Math.max(1, Math.min(8, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12))));
+    };
+    svg.addEventListener('wheel', wheel, { passive: false });
+    return () => svg.removeEventListener('wheel', wheel);
+  }, []);
   const paths = useMemo(
     () =>
       contours()
@@ -90,6 +103,7 @@ export default function Contour2D({
       </div>
       <svg
         id="contour-chart"
+        ref={svgRef}
         viewBox="0 0 600 500"
         role="img"
         aria-label="Objective contour map. Click to choose a starting point; hold Shift and drag to pan."
@@ -119,8 +133,12 @@ export default function Contour2D({
           }
           const p = getPoint(e);
           onHover(inDomain(o, p) ? p : null);
+          setProbe(inDomain(o, p) ? p : null);
         }}
-        onPointerLeave={() => onHover(null)}
+        onPointerLeave={() => {
+          onHover(null);
+          setProbe(null);
+        }}
       >
         <defs>
           <clipPath id="contour-clip">
@@ -136,6 +154,17 @@ export default function Contour2D({
             orient="auto"
           >
             <path d="M0,0L10,5L0,10" fill="#e0e6ff" />
+          </marker>
+          <marker
+            id="probe-arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto"
+          >
+            <path d="M0,0L10,5L0,10" fill="#ffffff" />
           </marker>
         </defs>
         <g clipPath="url(#contour-clip)">
@@ -203,7 +232,8 @@ export default function Contour2D({
               const [x, y] = point(last.theta);
               return (
                 <g key={r.algorithm}>
-                  <path d={d} fill="none" stroke={color} strokeWidth="2.5" />
+                  <path d={d} fill="none" stroke="#0a0f1e" strokeOpacity=".45" strokeWidth="5" />
+                  <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
                   {inDomain(o, last.theta) && (
                     <circle cx={x} cy={y} r="5" fill={color} stroke="#fff" strokeWidth="1.2" />
                   )}
@@ -211,8 +241,19 @@ export default function Contour2D({
               );
             })}
             {inDomain(o, initial) && (
-              <circle cx={point(initial)[0]} cy={point(initial)[1]} r="3" fill="#fff" />
+              <g>
+                <circle
+                  cx={point(initial)[0]}
+                  cy={point(initial)[1]}
+                  r="7"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="1.5"
+                />
+                <circle cx={point(initial)[0]} cy={point(initial)[1]} r="2.5" fill="#fff" />
+              </g>
             )}
+            {probe && <ProbeArrow from={point(probe)} g={o.gradient(new Float64Array(probe))} />}
           </g>
         </g>
         {Array.from({ length: 5 }, (_, i) => {
@@ -228,26 +269,46 @@ export default function Contour2D({
             <g key={i}>
               {grid && (
                 <>
-                  <line x1={x} x2={x} y1="50" y2="450" stroke="#c5d2ed" strokeOpacity=".12" />
-                  <line x1="50" x2="550" y1={y} y2={y} stroke="#c5d2ed" strokeOpacity=".12" />
+                  <line x1={x} x2={x} y1="50" y2="450" stroke="#ffffff" strokeOpacity=".14" />
+                  <line x1="50" x2="550" y1={y} y2={y} stroke="#ffffff" strokeOpacity=".14" />
                 </>
               )}
-              <text x={x} y="473" fill="#9ca9bc" fontSize="10" textAnchor="middle">
+              <text x={x} y="473" className="axis-text" textAnchor="middle">
                 {dataX.toFixed(1)}
               </text>
-              <text x="38" y={y + 3} fill="#9ca9bc" fontSize="10" textAnchor="end">
+              <text x="38" y={y + 3} className="axis-text" textAnchor="end">
                 {dataY.toFixed(1)}
               </text>
             </g>
           );
         })}
-        <text x="300" y="493" textAnchor="middle" fill="#bfc8df" fontSize="12">
+        <text x="300" y="495" textAnchor="middle" className="axis-title">
           x
         </text>
-        <text x="15" y="250" fill="#bfc8df" fontSize="12">
+        <text x="38" y="38" textAnchor="end" className="axis-title">
           y
         </text>
       </svg>
     </div>
+  );
+}
+
+function ProbeArrow({ from, g }: { from: Vec; g: Float64Array }) {
+  const norm = Math.hypot(g[0], g[1]);
+  if (!(norm > 0) || !Number.isFinite(norm)) return null;
+  const length = 34;
+  return (
+    <g className="probe" pointerEvents="none">
+      <circle cx={from[0]} cy={from[1]} r="3" fill="#fff" />
+      <line
+        x1={from[0]}
+        y1={from[1]}
+        x2={from[0] - (g[0] / norm) * length}
+        y2={from[1] + (g[1] / norm) * length}
+        stroke="#fff"
+        strokeWidth="2"
+        markerEnd="url(#probe-arrow)"
+      />
+    </g>
   );
 }

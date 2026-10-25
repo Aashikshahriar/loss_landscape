@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ArrowDownRight, ChartNoAxesCombined, Download } from 'lucide-react';
+import { ArrowDownRight, ChartNoAxesCombined, Download, Trophy } from 'lucide-react';
+import type { Algorithm } from '../types';
 import { useLab } from '../stores/lab';
-import { algorithms } from '../math/engine';
+import { algorithms, isActive } from '../math/engine';
 import { fmt } from './Inspector';
 import { download } from '../services/experiments';
 type Metric = 'loss' | 'gradNorm' | 'updateNorm' | 'x' | 'y';
@@ -15,7 +16,8 @@ const tabs: { id: Metric; name: string }[] = [
 export function Charts() {
   const { runs, cursor, setCursor, config } = useLab();
   const [metric, setMetric] = useState<Metric>('loss'),
-    [log, setLog] = useState(false);
+    [log, setLog] = useState(false),
+    [hover, setHover] = useState<number | null>(null);
   const value = (s: (typeof runs)[number]['history'][number]) =>
     metric === 'x' ? s.theta[0] : metric === 'y' ? s.theta[1] : s[metric];
   const transform = (n: number) => (log ? Math.sign(n) * Math.log10(1 + Math.abs(n)) : n);
@@ -36,14 +38,32 @@ export function Charts() {
     bottom = 29;
   const x = (n: number) => left + (n / maxStep) * (width - left - right),
     y = (n: number) => top + ((high - transform(n)) / (high - low)) * (height - top - bottom);
+  const stepAt = (e: React.PointerEvent<SVGSVGElement> | React.MouseEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const step = Math.round(
+      ((((e.clientX - box.left) / box.width) * width - left) / (width - left - right)) * maxStep,
+    );
+    return Math.max(0, Math.min(steps, step));
+  };
   const active = runs[0],
     first = active.history[0].loss,
     last = active.history.at(-1)!.loss,
     improvement = first === 0 ? null : ((first - last) / Math.abs(first)) * 100;
   const exportSvg = () => {
-    const svg = document.querySelector('#convergence-chart');
-    if (svg)
-      download(new XMLSerializer().serializeToString(svg), 'image/svg+xml', 'optimizationland-chart.svg');
+    const svg = document.querySelector<SVGSVGElement>('#convergence-chart');
+    if (!svg) return;
+    // Inline computed theme colors so the file looks the same outside the page.
+    const copy = svg.cloneNode(true) as SVGSVGElement,
+      source = svg.querySelectorAll('*'),
+      target = copy.querySelectorAll('*');
+    source.forEach((node, i) => {
+      const style = getComputedStyle(node),
+        el = target[i] as SVGElement;
+      for (const prop of ['fill', 'stroke', 'stroke-opacity', 'font-family', 'font-size'])
+        el.style.setProperty(prop, style.getPropertyValue(prop));
+    });
+    copy.style.background = getComputedStyle(svg).backgroundColor;
+    download(new XMLSerializer().serializeToString(copy), 'image/svg+xml', 'optimizationland-chart.svg');
   };
   return (
     <section className="charts panel" aria-label="Convergence charts">
@@ -51,7 +71,7 @@ export function Charts() {
         <div className="chart-title">
           <ChartNoAxesCombined size={16} />
           <h2>Convergence</h2>
-          <span className="tiny-pill">LIVE METRICS</span>
+          <span className="tiny-pill">Live</span>
         </div>
         <button
           className="icon-button"
@@ -82,44 +102,31 @@ export function Charts() {
           viewBox={`0 0 ${width} ${height}`}
           role="img"
           aria-label={`${tabs.find((t) => t.id === metric)?.name} versus recorded step. ${runs.map((r) => `${algorithms[r.algorithm].name}: initial ${fmt(value(r.history[0]))}, current ${fmt(value(r.history.at(-1)!))}`).join('. ')}`}
-          onClick={(e) => {
-            const box = e.currentTarget.getBoundingClientRect();
-            const step = Math.round(
-              ((((e.clientX - box.left) / box.width) * width - left) / (width - left - right)) * maxStep,
-            );
-            setCursor(Math.max(0, Math.min(steps, step)));
-          }}
-          style={{ background: '#111724' }}
+          onClick={(e) => setCursor(stepAt(e))}
+          onPointerMove={(e) => setHover(steps > 0 ? stepAt(e) : null)}
+          onPointerLeave={() => setHover(null)}
         >
           {Array.from({ length: 4 }, (_, i) => {
             const py = top + (i / 3) * (height - top - bottom),
               n = high - (i / 3) * (high - low);
             return (
               <g key={i}>
-                <line x1={left} x2={width - right} y1={py} y2={py} stroke="#273246" strokeDasharray="3 5" />
-                <text
-                  x={left - 12}
-                  y={py + 3}
-                  textAnchor="end"
-                  fill="#9ca9bc"
-                  fontSize="9"
-                  fontFamily="monospace"
-                >
+                <line
+                  x1={left}
+                  x2={width - right}
+                  y1={py}
+                  y2={py}
+                  className="chart-grid"
+                  strokeDasharray="3 5"
+                />
+                <text x={left - 12} y={py + 3} textAnchor="end" className="chart-tick">
                   {log ? n.toFixed(2) : Math.abs(n) >= 1000 ? n.toExponential(1) : n.toFixed(2)}
                 </text>
               </g>
             );
           })}
           {Array.from({ length: 6 }, (_, i) => (
-            <text
-              key={i}
-              x={x((i / 5) * maxStep)}
-              y={height - 8}
-              textAnchor="middle"
-              fill="#9ca9bc"
-              fontSize="9"
-              fontFamily="monospace"
-            >
+            <text key={i} x={x((i / 5) * maxStep)} y={height - 8} textAnchor="middle" className="chart-tick">
               {Math.round((i / 5) * maxStep)}
             </text>
           ))}
@@ -132,7 +139,8 @@ export function Charts() {
                 d={samples.map((s, i) => (i ? 'L' : 'M') + x(s.step) + ',' + y(value(s))).join('')}
                 stroke={algorithms[r.algorithm].color}
                 fill="none"
-                strokeWidth="2"
+                strokeWidth="2.25"
+                strokeLinejoin="round"
               />
             );
           })}
@@ -142,18 +150,45 @@ export function Charts() {
               x2={x(cursor ?? steps)}
               y1={top}
               y2={height - bottom}
-              stroke="#f4f7fb"
-              strokeOpacity=".35"
+              className="chart-cursor"
               strokeDasharray="3 3"
             />
           )}
+          {hover !== null && (
+            <g className="chart-hover" pointerEvents="none">
+              <line x1={x(hover)} x2={x(hover)} y1={top} y2={height - bottom} />
+              {runs.map((r) => {
+                const s = r.history[Math.min(hover, r.history.length - 1)];
+                return Number.isFinite(value(s)) ? (
+                  <circle
+                    key={r.algorithm}
+                    cx={x(s.step)}
+                    cy={y(value(s))}
+                    r="3.5"
+                    fill={algorithms[r.algorithm].color}
+                  />
+                ) : null;
+              })}
+            </g>
+          )}
           {steps === 0 && (
-            <text x="430" y="86" fill="#a6b2c8" fontSize="12" textAnchor="middle">
+            <text x="430" y="86" className="chart-empty" textAnchor="middle">
               Run an optimizer to trace its progress.
             </text>
           )}
         </svg>
       </div>
+      {hover !== null && (
+        <div className="chart-readout" aria-hidden="true">
+          <b>t = {hover}</b>
+          {runs.map((r) => (
+            <span key={r.algorithm}>
+              <i style={{ background: algorithms[r.algorithm].color }} />
+              {algorithms[r.algorithm].short} {fmt(value(r.history[Math.min(hover, r.history.length - 1)]))}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="chart-footer">
         <span>
           {log ? 'Signed log₁₀(1 + |value|)' : 'Original objective units'} <span>·</span> Step t
@@ -176,8 +211,9 @@ export function Comparison() {
   return (
     <section className="comparison panel">
       <div className="panel-label">
-        EXPERIMENT COMPARISON <span className="tiny-pill">SAME START · SHARED PARAMETERS</span>
+        Experiment comparison <span className="tiny-pill">Same start · shared parameters</span>
       </div>
+      {runs.length > 1 && <Prediction />}
       <div className="table-scroll">
         <table>
           <thead>
@@ -228,5 +264,56 @@ export function Comparison() {
         does not certify an optimum.
       </p>
     </section>
+  );
+}
+
+/** A small game: call the winner before the race, then see who reached the lowest point. */
+function Prediction() {
+  const { runs, config } = useLab();
+  const key = JSON.stringify(config);
+  const [guess, setGuess] = useState<{ key: string; algorithm: Algorithm } | null>(null);
+  const pick = guess?.key === key ? guess.algorithm : null;
+  const started = runs.some((r) => r.history.length > 1),
+    finished = started && runs.every((r) => !isActive(r.status));
+  const best = (r: (typeof runs)[number]) => {
+    const l = r.history.at(-1)!.loss;
+    return Number.isFinite(l) ? l : Infinity;
+  };
+  const winner = runs.reduce((a, b) => (best(b) < best(a) ? b : a));
+  return (
+    <div className="prediction" role="group" aria-label="Predict the winner">
+      <Trophy size={16} />
+      {!pick ? (
+        <>
+          <span>
+            {started ? 'Reset to make a prediction.' : 'Before you press Run: who will end lowest?'}
+          </span>
+          {!started &&
+            runs.map((r) => (
+              <button
+                key={r.algorithm}
+                className="chip"
+                onClick={() => setGuess({ key, algorithm: r.algorithm })}
+              >
+                <i style={{ background: algorithms[r.algorithm].color }} />
+                {algorithms[r.algorithm].short}
+              </button>
+            ))}
+        </>
+      ) : !finished ? (
+        <span>
+          Your pick: <b>{algorithms[pick].name}</b>. Run every optimizer to the end to see if you were right.
+        </span>
+      ) : winner.algorithm === pick ? (
+        <span className="prediction-win">
+          You called it. <b>{algorithms[pick].name}</b> finished lowest at f = {fmt(best(winner))}.
+        </span>
+      ) : (
+        <span className="prediction-miss">
+          Not this time. <b>{algorithms[winner.algorithm].name}</b> finished lowest at f = {fmt(best(winner))}
+          ; your pick ended at {fmt(best(runs.find((r) => r.algorithm === pick)!))}.
+        </span>
+      )}
+    </div>
   );
 }

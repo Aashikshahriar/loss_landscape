@@ -18,6 +18,8 @@ import { algorithms } from '../math/engine';
 import { download } from '../services/experiments';
 import type { Vec } from '../types';
 import { GraphicsBoundary } from './GraphicsBoundary';
+import { Tex } from './Tex';
+import { palette, useTheme } from '../stores/theme';
 const Surface3D = lazy(() => import('../visualization/Surface3D'));
 const Contour2D = lazy(() => import('../visualization/Contour2D'));
 export function Viewport() {
@@ -39,6 +41,8 @@ export function Viewport() {
     notify,
   } = useLab();
   const o = objectiveById(c.objective);
+  const theme = useTheme((t) => t.theme),
+    colors = palette[theme];
   const [wireframe, setWireframe] = useState(true),
     [grid, setGrid] = useState(true),
     [critical, setCritical] = useState(false),
@@ -58,14 +62,14 @@ export function Viewport() {
     canvas.width = source.width * 2;
     canvas.height = source.height * 2 + 140;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#0d121e';
+    ctx.fillStyle = colors.surface;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(source, 0, 70, canvas.width, canvas.height - 140);
-    ctx.fillStyle = '#f4f7fb';
-    ctx.font = '28px sans-serif';
+    ctx.fillStyle = colors.text;
+    ctx.font = '600 28px "Fraunces Variable", serif';
     ctx.fillText(`OptimizationLand · ${o.name}`, 30, 42);
-    ctx.font = '18px monospace';
-    ctx.fillStyle = '#bfc8df';
+    ctx.font = '18px "JetBrains Mono Variable", monospace';
+    ctx.fillStyle = colors.muted;
     ctx.fillText(
       `Step ${current} · height: log-normalized · ${c.algorithms.map((a) => algorithms[a].short).join(' / ')}`,
       30,
@@ -117,12 +121,10 @@ export function Viewport() {
         <div className="stage-heading">
           <div>
             <span className="live-dot" />
-            LIVE LANDSCAPE
+            Live landscape
           </div>
           <h2>{o.name}</h2>
-          <p>
-            f(x, y) <span>→</span> ℝ
-          </p>
+          <Tex className="stage-formula">{o.tex}</Tex>
         </div>
         <div className="surface-options">
           <button
@@ -223,7 +225,7 @@ export function Viewport() {
             <span>
               {view === '3d'
                 ? 'Drag to orbit · Scroll to zoom · Click to set start'
-                : 'Click to set start · Shift + drag to pan'}
+                : 'Click to set start · Scroll to zoom · Shift + drag to pan'}
             </span>
           )}
           <span className="render-note">Log-normalized {view === '3d' ? 'height' : 'color'}</span>
@@ -284,6 +286,7 @@ export function Viewport() {
             <option value="1">1×</option>
             <option value="5">5×</option>
             <option value="20">20×</option>
+            <option value="60">60×</option>
           </select>
         </label>
       </div>

@@ -1,8 +1,10 @@
-import { Activity, ArrowDownRight, Info, Microscope } from 'lucide-react';
+import { Activity, ArrowDownRight, Feather, Info, Microscope, Waves } from 'lucide-react';
 import { useCurrent, useLab } from '../stores/lab';
 import { classification, eigenvalues, objectiveById } from '../math/objectives';
 import { algorithms } from '../math/engine';
 import { inDomain } from '../visualization/sampling';
+import { narrate } from '../math/narrative';
+import { Tex } from './Tex';
 export const fmt = (n: number) =>
   !Number.isFinite(n)
     ? 'non-finite'
@@ -30,7 +32,7 @@ export function Inspector() {
     <aside className="inspector panel" aria-label="Numerical inspector">
       <div className="panel-label">
         <Microscope size={15} />
-        OPTIMIZATION MICROSCOPE
+        Optimization microscope
       </div>
       <div className="inspector-inner">
         <div className="inspector-state">
@@ -55,16 +57,22 @@ export function Inspector() {
             </select>
           </label>
         )}
+        <div className="narrator" aria-live="polite">
+          <span>
+            <Feather size={13} /> What is happening
+          </span>
+          <p>{narrate(run, s, e)}</p>
+        </div>
         <div className="loss-metric">
           <span>
-            Objective value <span className="math-label">f(θ)</span>
+            Height of the land <Tex>{String.raw`f(\theta_t)`}</Tex>
           </span>
           <strong>{fmt(s.loss)}</strong>
           <small>At the selected recorded step</small>
         </div>
         <div className="inspector-section">
           <h3>
-            POSITION <span>θₜ</span>
+            Position <Tex>{String.raw`\theta_t`}</Tex>
           </h3>
           <dl className="metrics">
             <div>
@@ -83,42 +91,56 @@ export function Inspector() {
         </div>
         <div className="inspector-section">
           <h3>
-            <Activity size={13} /> GRADIENT <span>∇f(θₜ)</span>
+            <Activity size={13} /> Slope <Tex>{String.raw`\nabla f(\theta_t)`}</Tex>
           </h3>
           <dl className="metrics">
             <div>
-              <dt>∂f / ∂x</dt>
+              <dt>
+                <Tex>{String.raw`\partial f/\partial x`}</Tex>
+              </dt>
               <dd>{fmt(s.gradient[0])}</dd>
             </div>
             <div>
-              <dt>∂f / ∂y</dt>
+              <dt>
+                <Tex>{String.raw`\partial f/\partial y`}</Tex>
+              </dt>
               <dd>{fmt(s.gradient[1])}</dd>
             </div>
             <div className="metric-total">
-              <dt>Gradient norm</dt>
+              <dt>
+                Steepness <Tex>{String.raw`\lVert\nabla f\rVert`}</Tex>
+              </dt>
               <dd>{fmt(s.gradNorm)}</dd>
             </div>
           </dl>
         </div>
         <div className="inspector-section">
           <h3>
-            <ArrowDownRight size={13} /> LAST UPDATE <span>Δθₜ</span>
+            <ArrowDownRight size={13} /> Last stride <Tex>{String.raw`\Delta\theta_t`}</Tex>
           </h3>
           <dl className="metrics">
             <div>
-              <dt>Δx</dt>
+              <dt>
+                <Tex>{String.raw`\Delta x`}</Tex>
+              </dt>
               <dd>{fmt(s.update[0])}</dd>
             </div>
             <div>
-              <dt>Δy</dt>
+              <dt>
+                <Tex>{String.raw`\Delta y`}</Tex>
+              </dt>
               <dd>{fmt(s.update[1])}</dd>
             </div>
             <div className="metric-total">
-              <dt>Step norm</dt>
+              <dt>
+                Stride length <Tex>{String.raw`\lVert\Delta\theta\rVert`}</Tex>
+              </dt>
               <dd>{fmt(s.updateNorm)}</dd>
             </div>
             <div>
-              <dt>Learning rate</dt>
+              <dt>
+                Learning rate <Tex>{String.raw`\eta_t`}</Tex>
+              </dt>
               <dd>{s.learningRate.toPrecision(4)}</dd>
             </div>
           </dl>
@@ -126,15 +148,19 @@ export function Inspector() {
         </div>
         <div className="inspector-section">
           <h3>
-            LOCAL CURVATURE <span>H(θₜ)</span>
+            <Waves size={13} /> Curvature <Tex>{String.raw`\operatorname{eig} H(\theta_t)`}</Tex>
           </h3>
           <dl className="metrics">
             <div>
-              <dt>λ min</dt>
+              <dt>
+                <Tex>{String.raw`\lambda_{\min}`}</Tex>
+              </dt>
               <dd className={e[0] < 0 ? 'warning-text' : ''}>{fmt(e[0])}</dd>
             </div>
             <div>
-              <dt>λ max</dt>
+              <dt>
+                <Tex>{String.raw`\lambda_{\max}`}</Tex>
+              </dt>
               <dd>{fmt(e[1])}</dd>
             </div>
           </dl>
@@ -143,8 +169,12 @@ export function Inspector() {
         {(run.algorithm === 'adam' || run.algorithm === 'momentum' || run.algorithm === 'rmsprop') && (
           <details className="internal-details">
             <summary>Optimizer internals</summary>
-            <p>m = [{s.moments.m.map(fmt).join(', ')}]</p>
-            <p>v = [{s.moments.v.map(fmt).join(', ')}]</p>
+            <p>
+              <Tex>m</Tex> = [{s.moments.m.map(fmt).join(', ')}]
+            </p>
+            <p>
+              <Tex>v</Tex> = [{s.moments.v.map(fmt).join(', ')}]
+            </p>
             <small>Raw moments; the last update used the gradient at θₜ₋₁.</small>
           </details>
         )}
@@ -182,16 +212,16 @@ function VectorDiagram({ gradient: g, update: u }: { gradient: number[]; update:
         viewBox="0 0 160 60"
         aria-label="Normalized negative oracle gradient used for the last update, and that update direction"
       >
-        <path d="M80 3V57M12 30H148" stroke="#273246" />
-        <path d={`M80 30l${(-g[0] / norm) * 25} ${(g[1] / norm) * 25}`} stroke="#a99aff" strokeWidth="2" />
-        <circle cx={80 - (g[0] / norm) * 25} cy={30 + (g[1] / norm) * 25} r="2" fill="#a99aff" />
-        <path d={`M80 30l${(u[0] / unorm) * 23} ${(-u[1] / unorm) * 23}`} stroke="#3edbd0" strokeWidth="2" />
-        <circle cx={80 + (u[0] / unorm) * 23} cy={30 - (u[1] / unorm) * 23} r="2" fill="#3edbd0" />
+        <path className="vd-axis" d="M80 3V57M12 30H148" />
+        <path className="vd-grad" d={`M80 30l${(-g[0] / norm) * 25} ${(g[1] / norm) * 25}`} />
+        <circle className="vd-grad-dot" cx={80 - (g[0] / norm) * 25} cy={30 + (g[1] / norm) * 25} r="2.5" />
+        <path className="vd-step" d={`M80 30l${(u[0] / unorm) * 23} ${(-u[1] / unorm) * 23}`} />
+        <circle className="vd-step-dot" cx={80 + (u[0] / unorm) * 23} cy={30 - (u[1] / unorm) * 23} r="2.5" />
       </svg>
       <span>
         <i className="violet" />
-        −∇f <i className="cyan" />
-        Δθ <small>last update · unit directions</small>
+        <Tex>{String.raw`-\nabla f`}</Tex> <i className="cyan" />
+        <Tex>{String.raw`\Delta\theta`}</Tex> <small>unit directions</small>
       </span>
     </div>
   );

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { algorithms } from '../math/engine';
 import type { Objective2D, Run, Vec } from '../types';
 import { inDomain, sampleSurface, terrainColor } from './sampling';
+import { palette, useTheme } from '../stores/theme';
 interface Props {
   objective: Objective2D;
   runs: Run[];
@@ -21,21 +22,21 @@ function Label({
   text,
   position,
   width = 0.42,
-  color = '#bac6dc',
+  color,
 }: {
   text: string;
   position: [number, number, number];
   width?: number;
-  color?: string;
+  color: string;
 }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.height = 64;
     const ctx = canvas.getContext('2d')!;
-    ctx.font = '40px monospace';
+    ctx.font = '500 40px "JetBrains Mono Variable", monospace';
     canvas.width = Math.ceil(ctx.measureText(text).width) + 22;
     ctx.fillStyle = color;
-    ctx.font = '40px monospace';
+    ctx.font = '500 40px "JetBrains Mono Variable", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, canvas.width / 2, 32);
@@ -57,7 +58,8 @@ function Terrain({
   wireframe,
   onPick,
   onHover,
-}: Pick<Props, 'objective' | 'wireframe' | 'onPick' | 'onHover'>) {
+  wire,
+}: Pick<Props, 'objective' | 'wireframe' | 'onPick' | 'onHover'> & { wire: string }) {
   const data = useMemo(() => sampleSurface(o), [o]);
   const geometry = useMemo(() => {
     const n = data.n,
@@ -114,7 +116,7 @@ function Terrain({
       </mesh>
       {wireframe && (
         <mesh geometry={geometry} raycast={() => null}>
-          <meshBasicMaterial color="#111b36" wireframe transparent opacity={0.16} depthWrite={false} />
+          <meshBasicMaterial color={wire} wireframe transparent opacity={0.14} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -123,20 +125,24 @@ function Terrain({
 function Scene(p: Props) {
   const data = useMemo(() => sampleSurface(p.objective), [p.objective]);
   const { objective: o } = p;
+  const theme = useTheme((t) => t.theme),
+    ink = palette[theme];
   return (
     <>
       <ambientLight intensity={1.1} />
       <directionalLight position={[-4, 9, 5]} intensity={1.6} />
       <directionalLight position={[5, 2, -5]} color="#b1b0ff" intensity={0.65} />
-      {p.grid && <gridHelper args={[7.2, 16, '#354059', '#202b3d']} position={[0, -0.07, 0]} />}
-      <Terrain objective={o} wireframe={p.wireframe} onPick={p.onPick} onHover={p.onHover} />
+      {p.grid && (
+        <gridHelper key={theme} args={[7.2, 16, ink.grid, ink.gridMinor]} position={[0, -0.07, 0]} />
+      )}
+      <Terrain objective={o} wireframe={p.wireframe} onPick={p.onPick} onHover={p.onHover} wire={ink.wire} />
       <Line
         points={[
           [-3.5, 0, -3.5],
           [-3.5, 0, 3.5],
           [3.5, 0, 3.5],
         ]}
-        color="#56617a"
+        color={ink.axis}
         lineWidth={1}
       />
       {[-1, 0, 1].map((k) => (
@@ -144,21 +150,29 @@ function Scene(p: Props) {
           <Label
             position={[k * 3, -0.03, 3.65]}
             width={0.55}
+            color={ink.muted}
             text={(o.domain.x[0] + ((k + 1) / 2) * (o.domain.x[1] - o.domain.x[0])).toFixed(1)}
           />
           <Label
             position={[-3.8, -0.03, -k * 3]}
             width={0.55}
+            color={ink.muted}
             text={(o.domain.y[0] + ((k + 1) / 2) * (o.domain.y[1] - o.domain.y[0])).toFixed(1)}
           />
         </group>
       ))}
-      <Label position={[0, -0.1, 4.15]} text="x" width={0.3} />
-      <Label position={[-4.15, 0, 0]} text="y" width={0.3} />
+      <Label position={[0, -0.1, 4.15]} text="x" width={0.3} color={ink.text} />
+      <Label position={[-4.15, 0, 0]} text="y" width={0.3} color={ink.text} />
       {inDomain(o, p.initial) && (
         <mesh position={data.world(p.initial)} raycast={() => null}>
           <sphereGeometry args={[0.07, 16, 16]} />
           <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      )}
+      {inDomain(o, p.initial) && (
+        <mesh position={data.world(p.initial)} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <ringGeometry args={[0.1, 0.13, 32]} />
+          <meshBasicMaterial color={ink.start} side={THREE.DoubleSide} depthTest={false} />
         </mesh>
       )}
       {p.critical &&
@@ -166,12 +180,12 @@ function Scene(p: Props) {
           <group key={i} position={data.world([point.x, point.y])}>
             <mesh raycast={() => null}>
               <sphereGeometry args={[0.045, 12, 12]} />
-              <meshBasicMaterial color="#ffcf8b" />
+              <meshBasicMaterial color={ink.marker} />
             </mesh>
             <Label
               position={[0, 0.22, 0]}
               width={2}
-              color="#ffda9f"
+              color={ink.marker}
               text={`${point.type} (${point.x.toFixed(1)}, ${point.y.toFixed(1)})`}
             />
           </group>
@@ -229,7 +243,7 @@ export default function Surface3D(props: Props) {
       dpr={[1, 1.75]}
       onCreated={({ gl }) => {
         gl.domElement.dataset.landscape = 'true';
-        gl.setClearColor('#0d121e', 0);
+        gl.setClearColor('#000000', 0);
       }}
     >
       <Scene {...props} />

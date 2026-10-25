@@ -31,7 +31,10 @@ flowchart LR
 - `src/stores/lab.ts`: UI coordination, worker request revision IDs, playback, historical inspection, reset, and restore.
 - `src/visualization`: mesh construction, contour paths, rendering transforms, domain filtering, point picking, and GPU resource cleanup.
 - `src/components`: controls, playback/viewport, microscope, charts, comparison, number input, and native save dialog.
-- `src/features`: landing page, ten executable lessons, and the experiment notebook.
+- `src/features`: landing page, the ten-chapter story page with its interactive widgets (`widgets.tsx`), and the experiment notebook.
+- `src/stores/theme.ts`: light/dark/system theme and high-contrast state; colors live as CSS custom properties in `global.css`, with literal values only for canvas/WebGL drawing.
+- `src/math/narrative.ts`: the inspector narrator that describes each recorded step in plain language.
+- `src/components/Tex.tsx`: KaTeX rendering for all mathematical notation.
 - `src/services/experiments.ts`: schemas, IndexedDB, import bounds, portable exports, and compact configuration links.
 
 The 3D renderer and contour module load on demand. A 96×96 cell mesh is memoized per objective; contour sampling uses 80×80 cells. The 3D canvas renders on demand rather than continuously. The simulation performs at most 100 updates per worker message; normal playback requests 1, 5, or 20. Hidden tabs stop requesting work. History is limited to 10,001 samples per run and four runs.

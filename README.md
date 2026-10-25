@@ -4,7 +4,7 @@
 
 A static, browser-based scientific playground for seeing how real optimizers move across mathematical landscapes. No account, API key, or server is required.
 
-![OptimizationLand workspace](docs/images/workspace.png)
+![OptimizationLand workspace](docs/preview.webp)
 
 ## Run locally
 
@@ -34,10 +34,12 @@ Production preview: `http://127.0.0.1:4173/loss_landscape/`.
 - Worker-driven run/pause/step/reset, bounded histories, seeded replay, constant/exponential/cosine schedules, optional clipping, and explicit stopping reasons.
 - Interactive Three.js surfaces and D3 contours, point picking, orbit/zoom/pan, fit, wireframe/grid, critical markers, and optional negative-gradient field.
 - Synchronized loss/gradient/step/parameter plots, numerical inspector, raw optimizer moments, Hessian eigenvalues, and honest comparison counters/timings.
-- Ten executable mathematical field notes and formula reference cards.
+- A ten-chapter story page that explains the math in plain language, with KaTeX equations and interactive widgets: a directional-derivative compass, a learning-rate explorer, condition-number and momentum valleys, a saddle escape, and a Himmelblau basin map.
+- A live narrator in the inspector that describes each recorded step, plus a "call the winner" prediction game when racing optimizers.
+- Keyboard shortcuts (Space run/pause, → step, ←/Shift+→ scrub, R reset, V switch view, 0–9 landscapes, ? help), a log-scale learning-rate slider, wheel zoom and a −∇f probe on contours, and hover readouts on charts.
 - Named IndexedDB experiments with restore/resume/duplicate/delete, validated JSON import/export, CSV histories, annotated raster PNG, SVG charts, and configuration-only share links.
-- Responsive 2D-first mobile workflow, keyboard numeric controls, high contrast, reduced-motion styles, HTML diagnostics, and chart descriptions.
-- Hash routing, local fonts, GitHub Pages base path, CI, and deployment workflow.
+- Light and dark themes (follows the system by default; toggle in the header), responsive 2D-first mobile workflow, keyboard numeric controls, high contrast, reduced-motion styles, HTML diagnostics, and chart descriptions.
+- Hash routing, self-hosted Fraunces / Inter / JetBrains Mono fonts and KaTeX math fonts, GitHub Pages base path, CI, and deployment workflow.
 
 This is a working P0 implementation with selected P1 features. It is not the complete research roadmap. Per-algorithm parameter editing, safe custom expressions, basin maps, prediction challenges, and real neural-network training/slices remain planned. See [limitations](docs/limitations.md) for the exact scope. No convergence outcome is a mathematical guarantee.
 
@@ -52,9 +54,7 @@ npx playwright install --with-deps chromium firefox
 npm run test:e2e
 ```
 
-Scientific tests check known values, finite-difference gradients/Hessians, numerical update fixtures, Adam timestep correction, schedules, seeded replay, resets, evaluation counters, termination, and domain policies. Browser tests exercise real workflows against the built site under `/loss_landscape/`. An automated axe audit checks the core 2D workspace; this supplements, rather than establishes, complete WCAG conformance.
-
-`scripts/browser-review.mjs` captures real desktop/mobile screenshots, checks 3D picking/navigation errors, and exports an actual surface PNG. It expects the production preview on port 4173. Screenshots are located in `docs/images`.
+Scientific tests check known values, finite-difference gradients/Hessians, numerical update fixtures, Adam timestep correction, schedules, seeded replay, resets, evaluation counters, termination, and domain policies. Browser tests exercise real workflows against the built site under `/loss_landscape/`. Automated axe audits check the core 2D workspace in light and dark themes and the story page; this supplements, rather than establishes, complete WCAG conformance.
 
 ## Deployment status
 
@@ -68,9 +68,7 @@ Source repository: [Aashikshahriar/loss_landscape](https://github.com/Aashikshah
 - [Mathematics and rendering transforms](docs/mathematics.md)
 - [Algorithms, indexing, stopping, and metrics](docs/algorithms.md)
 - [Reproducibility and exports](docs/reproducibility.md)
-- [Milestone delivery report](docs/milestones.md)
 - [Scientific limits and roadmap](docs/limitations.md)
 - [Deployment](docs/deploy.md)
-- [Portfolio card](docs/portfolio.md)
 
 MIT licensed. Contributions should include independent scientific fixtures for changes to numerical behavior and update the algorithm version when reproducibility contracts change.

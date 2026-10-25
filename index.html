@@ -3,13 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080b12" />
+    <meta name="theme-color" content="#f6f4ef" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="Explore the geometry of optimization. Run real algorithms, inspect every update, and compare trajectories on interactive mathematical landscapes."
     />
     <title>OptimizationLand — Explore the Geometry of Optimization</title>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <script>
+      // Apply the saved or system theme before first paint to avoid a flash.
+      (function () {
+        var mode = null;
+        try {
+          mode = localStorage.getItem('optimizationland-theme');
+        } catch (e) {}
+        var dark = mode ? mode === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

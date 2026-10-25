@@ -1,33 +1,50 @@
 import { objectiveById } from './objectives';
 import type { Algorithm, Config, OptimizerState, Run, Sample, Vec } from '../types';
-export const algorithms: Record<Algorithm, { name: string; short: string; color: string; equation: string }> =
-  {
-    gd: { name: 'Gradient descent', short: 'GD', color: '#a99aff', equation: 'θₜ₊₁ = θₜ − ηₜ ∇f(θₜ)' },
-    momentum: {
-      name: 'Momentum',
-      short: 'Momentum',
-      color: '#ffbf70',
-      equation: 'vₜ₊₁ = βvₜ + gₜ;  θₜ₊₁ = θₜ − ηₜvₜ₊₁',
-    },
-    rmsprop: {
-      name: 'RMSProp',
-      short: 'RMSProp',
-      color: '#68b7ff',
-      equation: 'sₜ₊₁ = ρsₜ + (1−ρ)gₜ²;  θₜ₊₁ = θₜ − ηₜgₜ/(√sₜ₊₁ + ε)',
-    },
-    adam: {
-      name: 'Adam',
-      short: 'Adam',
-      color: '#3edbd0',
-      equation: 'm̂ₜ₊₁ = mₜ₊₁/(1−β₁ᵗ⁺¹);  v̂ₜ₊₁ = vₜ₊₁/(1−β₂ᵗ⁺¹);  θₜ₊₁ = θₜ − ηₜm̂ₜ₊₁/(√v̂ₜ₊₁ + ε)',
-    },
-    noisy: {
-      name: 'Noisy gradient',
-      short: 'Noisy GD',
-      color: '#f095ca',
-      equation: 'θₜ₊₁ = θₜ − ηₜ[∇f(θₜ) + σξₜ];  ξᵢ ~ U(−√3, √3)',
-    },
-  };
+export const algorithms: Record<
+  Algorithm,
+  { name: string; short: string; color: string; equation: string; tex: string; persona: string }
+> = {
+  gd: {
+    name: 'Gradient descent',
+    short: 'GD',
+    color: '#7c6cf2',
+    equation: 'θₜ₊₁ = θₜ − ηₜ ∇f(θₜ)',
+    tex: String.raw`\theta_{t+1} = \theta_t - \eta_t\,\nabla f(\theta_t)`,
+    persona: 'The careful hiker: feel the slope underfoot, step straight downhill, repeat.',
+  },
+  momentum: {
+    name: 'Momentum',
+    short: 'Momentum',
+    color: '#e8892b',
+    equation: 'vₜ₊₁ = βvₜ + gₜ;  θₜ₊₁ = θₜ − ηₜvₜ₊₁',
+    tex: String.raw`v_{t+1} = \beta\,v_t + g_t, \qquad \theta_{t+1} = \theta_t - \eta_t\,v_{t+1}`,
+    persona: 'The rolling ball: it remembers where it was heading and carries speed through flat ground.',
+  },
+  rmsprop: {
+    name: 'RMSProp',
+    short: 'RMSProp',
+    color: '#2f86e8',
+    equation: 'sₜ₊₁ = ρsₜ + (1−ρ)gₜ²;  θₜ₊₁ = θₜ − ηₜgₜ/(√sₜ₊₁ + ε)',
+    tex: String.raw`s_{t+1} = \rho\,s_t + (1-\rho)\,g_t^2, \qquad \theta_{t+1} = \theta_t - \frac{\eta_t\,g_t}{\sqrt{s_{t+1}} + \varepsilon}`,
+    persona: 'The cautious scout: shortens its stride along directions that have been steep lately.',
+  },
+  adam: {
+    name: 'Adam',
+    short: 'Adam',
+    color: '#0fa896',
+    equation: 'm̂ₜ₊₁ = mₜ₊₁/(1−β₁ᵗ⁺¹);  v̂ₜ₊₁ = vₜ₊₁/(1−β₂ᵗ⁺¹);  θₜ₊₁ = θₜ − ηₜm̂ₜ₊₁/(√v̂ₜ₊₁ + ε)',
+    tex: String.raw`\hat m_{t+1} = \frac{m_{t+1}}{1-\beta_1^{\,t+1}}, \quad \hat v_{t+1} = \frac{v_{t+1}}{1-\beta_2^{\,t+1}}, \quad \theta_{t+1} = \theta_t - \frac{\eta_t\,\hat m_{t+1}}{\sqrt{\hat v_{t+1}} + \varepsilon}`,
+    persona: 'The seasoned guide: momentum for direction, a per-coordinate stride for scale.',
+  },
+  noisy: {
+    name: 'Noisy gradient',
+    short: 'Noisy GD',
+    color: '#d6489a',
+    equation: 'θₜ₊₁ = θₜ − ηₜ[∇f(θₜ) + σξₜ];  ξᵢ ~ U(−√3, √3)',
+    tex: String.raw`\theta_{t+1} = \theta_t - \eta_t\big[\nabla f(\theta_t) + \sigma\,\xi_t\big], \qquad \xi_i \sim \mathcal{U}(-\sqrt{3},\,\sqrt{3})`,
+    persona: 'The hiker with a shaky compass: the right direction on average, never exactly.',
+  },
+};
 export const defaultConfig: Config = {
   objective: 'rosenbrock',
   initial: [-1.4, 1.6],

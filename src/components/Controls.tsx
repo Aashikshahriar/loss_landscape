@@ -1,10 +1,20 @@
-import { ChevronDown, Crosshair, Dices, FlaskConical, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronDown,
+  Crosshair,
+  Dices,
+  FlaskConical,
+  Gauge,
+  RotateCcw,
+  Route,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useLab } from '../stores/lab';
 import { algorithms, defaultConfig } from '../math/engine';
 import { objectives, objectiveById } from '../math/objectives';
 import type { Algorithm } from '../types';
 import { NumberField } from './NumberField';
+import { Tex } from './Tex';
 export function Controls() {
   const { config: c, configure, setObjective, notify } = useLab();
   const [advanced, setAdvanced] = useState(false);
@@ -21,7 +31,7 @@ export function Controls() {
   return (
     <aside className="controls panel" aria-label="Experiment controls">
       <div className="panel-label">
-        <SlidersHorizontal size={15} /> EXPERIMENT SETUP <span className="tiny-pill">01</span>
+        <SlidersHorizontal size={15} /> Experiment setup
       </div>
       <section className="control-section">
         <div className="section-title">
@@ -44,17 +54,20 @@ export function Controls() {
             <ChevronDown size={14} />
           </div>
         </label>
-        <div className="formula-mini">{objective.formula}</div>
+        <div className="formula-mini">
+          <Tex>{objective.tex}</Tex>
+        </div>
         <p className="control-description">{objective.description}</p>
         <div className="domain-line">
-          DOMAIN <code>x [{objective.domain.x.join(', ')}]</code>
+          Domain <code>x [{objective.domain.x.join(', ')}]</code>
           <code>y [{objective.domain.y.join(', ')}]</code>
         </div>
       </section>
       <section className="control-section">
         <div className="section-title">
           <span>
-            <span className="algorithm-glyph">⌁</span>Optimizers
+            <Route size={15} />
+            Optimizers
           </span>
           <span className="section-index">02</span>
         </div>
@@ -65,6 +78,7 @@ export function Controls() {
               key={key}
               className={'optimizer-option ' + (c.algorithms.includes(key as Algorithm) ? 'selected' : '')}
               onClick={() => toggle(key as Algorithm)}
+              title={a.persona}
               aria-pressed={c.algorithms.includes(key as Algorithm)}
             >
               <span className="check-box">{c.algorithms.includes(key as Algorithm) ? '✓' : ''}</span>
@@ -123,7 +137,10 @@ export function Controls() {
       </section>
       <section className="control-section">
         <div className="section-title">
-          <span>Hyperparameters</span>
+          <span>
+            <Gauge size={15} />
+            Hyperparameters
+          </span>
           <span className="section-index">04</span>
         </div>
         <div className="two-fields">
@@ -144,6 +161,27 @@ export function Controls() {
             onChange={(maxIterations) => configure({ maxIterations: Math.round(maxIterations) })}
           />
         </div>
+        <label className="rate-slider">
+          <span>
+            <Tex>{String.raw`\log_{10}\eta`}</Tex>
+            <b>{c.learningRate.toPrecision(3)}</b>
+          </span>
+          <input
+            type="range"
+            aria-label="Learning rate slider"
+            min={-5}
+            max={0.3}
+            step={0.01}
+            value={Math.log10(c.learningRate)}
+            onChange={(e) =>
+              configure({ learningRate: Number((10 ** Number(e.target.value)).toPrecision(3)) })
+            }
+          />
+          <small>
+            <span>gentle</span>
+            <span>bold</span>
+          </small>
+        </label>
         <label className="field">
           <span>Learning rate schedule</span>
           <div className="select-wrap">
